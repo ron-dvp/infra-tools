@@ -1,0 +1,13 @@
+######################################################
+# https://coralogix.com/docs/kubernetes-integration/ #
+######################################################
+
+kubectl create namespace fluentd-coralogix
+
+kubectl create secret generic fluentd-coralogix-account-secrets \
+    -n fluentd-coralogix \
+    --from-literal=PRIVATE_KEY=34ac5300-376f-31f3-4e07-a69294f3c143 \
+    --from-literal=ENDPOINT=api.coralogix.com
+
+
+kubectl apply -f fluentd.yml

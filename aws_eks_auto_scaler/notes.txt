@@ -1,0 +1,15 @@
+# replace <YOUR CLUSTER NAME>  in yaml
+
+https://docs.aws.amazon.com/eks/latest/userguide/managed-node-groups.html
+https://docs.aws.amazon.com/eks/latest/userguide/autoscaling.html#cluster-autoscaler
+
+kubectl apply -f cluster-autoscaler-autodiscover.yaml
+
+
+kubectl annotate serviceaccount cluster-autoscaler \
+  -n kube-system \
+  eks.amazonaws.com/role-arn=arn:aws:iam::452971473094:role/AmazonEKSClusterAutoscalerRole
+
+
+
+  

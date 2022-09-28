@@ -1,0 +1,111 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: telegraf-dev-cm
+  namespace: telegraf
+  labels:
+    k8s-app: telegraf
+data:
+  telegraf.conf: |+
+    [global_tags]
+      env = "dev"
+    [agent]
+      hostname = "$HOSTNAME-dev"
+    [[outputs.influxdb_v2]]
+      urls = ["https://us-east-1-1.aws.cloud2.influxdata.com"] # required
+      bucket = "nick-backend"
+      organization = "Rimon.Studio"
+      token = $TOKEN
+    [[inputs.cpu]]
+      percpu = true
+      totalcpu = true
+      collect_cpu_time = false
+      report_active = false
+    [[inputs.disk]]
+      ignore_fs = ["tmpfs", "devtmpfs", "devfs"]
+    [[inputs.diskio]]
+    [[inputs.kernel]]
+    [[inputs.mem]]
+    [[inputs.processes]]
+    [[inputs.swap]]
+    [[inputs.system]]
+    # [[inputs.kubernetes]]
+    #   url = "http://1.1.1.1:10255"
+
+---
+# Section: Daemonset
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: telegraf-dev-ds
+  namespace: telegraf
+  labels:
+    k8s-app: telegraf
+spec:
+  selector:
+    matchLabels:
+      name: telegraf
+  template:
+    metadata:
+      labels:
+        name: telegraf
+    spec:
+      containers:
+      - name: telegraf
+        image: telegraf
+        env:
+        - name: HOSTNAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: "HOST_PROC"
+          value: "/rootfs/proc"
+        - name: "HOST_SYS"
+          value: "/rootfs/sys"
+        # - name: ENV
+        #   valueFrom:
+        #     secretKeyRef:
+        #       name: telegraf
+        #       key: env
+        # - name: INFLUX_TOKEN
+        #   valueFrom:
+        #     secretKeyRef:
+        #       name: telegraf
+        #       key: influx_token
+        # - name: INFLUX_URL
+        #   valueFrom:
+        #     secretKeyRef:
+        #       name: telegraf
+        #       key: influx_url
+        volumeMounts:
+        - name: sys
+          mountPath: /rootfs/sys
+          readOnly: true
+        # - name: docker
+        #   mountPath: /var/run/docker.sock
+        #   readOnly: true
+        - name: proc
+          mountPath: /rootfs/proc
+          readOnly: true
+        - name: utmp
+          mountPath: /var/run/utmp
+          readOnly: true
+        - name: config
+          mountPath: /etc/telegraf
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - name: sys
+        hostPath:
+          path: /sys
+      - name: docker-socket
+        hostPath:
+          path: /var/run/docker.sock
+      - name: proc
+        hostPath:
+          path: /proc
+      - name: utmp
+        hostPath:
+          path: /var/run/utmp
+      - name: config
+        configMap:
+          name: telegraf-dev-cm

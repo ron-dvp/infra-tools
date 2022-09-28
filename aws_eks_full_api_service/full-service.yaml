@@ -1,0 +1,111 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  namespace: $NAMESPACE
+  name: app-dev-ingress
+  annotations:
+    alb.ingress.kubernetes.io/security-groups: $SECURITY-GROUP-ID $SECURITY-GROUP-ID 
+    alb.ingress.kubernetes.io/group.name: $INGRESS GROUP NAME
+    alb.ingress.kubernetes.io/scheme: internal
+    alb.ingress.kubernetes.io/certificate-arn: $SSL AWS ARN
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS":443}]'
+    alb.ingress.kubernetes.io/actions.redirect-to-eks: >
+      {"Type":"redirect","RedirectConfig":{"Host":"d2ktml70s7vfzl.cloudfront.net","Path":"/static-django/#{path}","Protocol":"HTTPS","Query":"#{query}","StatusCode":"HTTP_301"}}
+    alb.ingress.kubernetes.io/ssl-redirect: '443'
+    alb.ingress.kubernetes.io/target-type: ip
+spec:
+  ingressClassName: alb
+  rules:
+     - host: $HOST-NAME-DNS
+       http:
+        paths:
+         - path: /static*
+           pathType: ImplementationSpecific
+           backend:
+             service:
+               name: redirect-to-eks
+               port:
+                  name: use-annotation
+         - path: /*
+           pathType: ImplementationSpecific
+           backend:
+             service:
+               name: app-dev-ci
+               port:
+                 number: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: app-dev-ci
+  namespace: $NAMESPACE
+  labels:
+    app: app-dev
+spec:
+  selector:
+    app: app-dev
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8000
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-dev-cm
+  namespace: $NAMESPACE
+  labels:
+    app: app-dev
+data:
+  env:
+    KEY: "VALUE"
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-dev
+  namespace: $NAMESPACE
+  labels:
+    app: app-dev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app-dev
+  template:
+    metadata:
+      labels:
+        app: app-dev
+    spec:
+      containers:
+      - name: app-dev
+        image: $IMAGE-NAME
+        ports:
+        - containerPort: 8000
+        envFrom:
+          - configMapRef:
+              name: app-dev-cm
+      imagePullSecrets:
+        - name: regcred # DOCKER CREDENTIALS
+      # resources:
+      #   requests:
+      #     memory: "64mi"
+      #     cpu: "250m"
+      #   limits:
+      #     memory: "128mi"
+      #     cpu: "500m"
+---
+apiVersion: autoscaling/v1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: na-backend-hpa-dev
+  namespace: $NAMESPACE
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: app-dev
+  minReplicas: 1
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80

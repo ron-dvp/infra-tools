@@ -1,0 +1,26 @@
+Install metric server:
+    kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+
+kuebctl create namespace telegraf
+
+kubectl apply -f telegraf-cm.yaml
+
+
+change host name
+
+#############
+option 2 
+>>>>>>>>>>
+
+- at telegraf-cm change hostname
+
+
+helm repo add influxdata https://helm.influxdata.com/
+helm search repo influxdata
+helm install telegraf influxdata/telegraf-ds
+helm delete telegraf
+
+helm install telegraf \
+  --set outputs.influxdb.urls=https://us-east-1-1.aws.cloud2.influxdata.com \
+  --namespace=telegraf \
+    influxdata/telegraf-ds

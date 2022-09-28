@@ -1,0 +1,21 @@
+input {
+  kinesis {
+    kinesis_stream_name => "beta-studio-unity_logs-prod"
+    region => "eu-south-1"
+    application_name => "beta-nick-unity-logs"
+    codec => json
+  }
+}
+
+output {
+    coralogix {
+        config_params => {
+            "PRIVATE_KEY" => "PRIVATE_KEY"
+            "APP_NAME" => "APP_NAME"
+            "SUB_SYSTEM" => "SUB_SYSTEM"
+        }
+        log_key_name => "message"
+        timestamp_key_name => "@timestamp"
+        is_json => true
+    }
+}
